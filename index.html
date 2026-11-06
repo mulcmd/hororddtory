@@ -1,0 +1,238 @@
+<title>Malam Mencekam 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Cinzel:wght@600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+
+<div id="canvas-container"></div>
+<div id="damage-overlay" class="fx"></div>
+<div id="scare-overlay" class="fx"></div>
+<div id="fade"></div>
+<div id="crosshair" hidden></div>
+
+<!-- HUD -->
+<header id="hud" hidden>
+  <div id="hud-stats">
+    <div class="panel">
+      <div class="row"><span class="label">Darah</span><span id="hp-text">100%</span></div>
+      <div class="bar"><i id="hp-bar"></i></div>
+    </div>
+    <div class="panel">
+      <div class="row"><span class="label">Baterai senter</span><span id="bat-text">100%</span></div>
+      <div class="bar battery"><i id="bat-bar"></i></div>
+    </div>
+    <div class="panel">
+      <div class="row"><span class="label">Stamina</span></div>
+      <div class="bar stamina thin"><i id="stam-bar"></i></div>
+    </div>
+  </div>
+
+  <div id="objective" class="panel">
+    <span id="chapter-label">Bab 1 · Gerbang</span>
+    <span id="objective-text">Masuk ke rumah lewat pintu depan.</span>
+    <span id="goal-arrow" aria-live="off">
+      <svg id="goal-svg" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2 L17 16 L10 12.5 L3 16 Z" fill="#f0b35a"/></svg>
+      <span id="goal-dist">0 m</span>
+    </span>
+  </div>
+
+  <div id="hud-radar">
+    <canvas id="minimap" width="150" height="150" aria-label="Radar denah rumah"></canvas>
+    <div class="panel" style="padding:6px 10px"><span id="flash-mode">Senter: biasa [R]</span></div>
+    <button id="pause-btn" class="btn panel" type="button" style="pointer-events:auto">Jeda</button>
+  </div>
+</header>
+
+<div id="prompt" hidden></div>
+<div id="notice" hidden></div>
+
+<!-- Kotak cerita -->
+<div id="story-box" hidden role="dialog" aria-live="polite">
+  <h3 id="story-speaker">Bisikan</h3>
+  <p id="story-text"></p>
+  <p id="story-next">Tekan <kbd>E</kbd> atau ketuk kotak ini untuk lanjut</p>
+</div>
+
+<!-- Kontrol sentuh -->
+<div id="touch" aria-hidden="true">
+  <div id="stick"><div id="stick-knob"></div></div>
+  <div id="actions">
+    <button class="tbtn" type="button" data-act="crouch">Jongkok</button>
+    <button class="tbtn" type="button" data-act="run">Lari</button>
+    <button class="tbtn" type="button" data-act="flash">Senter</button>
+    <button class="tbtn spacer" type="button" tabindex="-1">.</button>
+    <button class="tbtn uv" type="button" data-act="uv">Mode UV</button>
+    <button class="tbtn primary" type="button" data-act="interact">Pakai</button>
+  </div>
+</div>
+
+<!-- Putar layar (portrait di HP) -->
+<div id="rotate" class="overlay" hidden>
+  <div class="card">
+    <div class="turn" aria-hidden="true"></div>
+    <h2>Putar HP ke landscape</h2>
+    <p>Malam Mencekam 3D dirancang untuk layar lebar. Putar HP ke samping agar kontrol dan layar terlihat jelas.</p>
+    <div style="margin-top:18px">
+      <button id="rotate-skip" class="btn" type="button">Lanjut tetap di portrait</button>
+    </div>
+  </div>
+</div>
+
+<!-- Menu utama -->
+<div id="menu" class="overlay">
+  <div class="card">
+    <div>
+      <div class="menu-kicker">Horor 3D bercerita</div>
+      <h1 class="menu-title">Malam Mencekam 3D</h1>
+      <p>
+        Sebulan lalu, adikmu Ayu mengirim pesan terakhir dari rumah tua di pinggir desa.
+        Isinya hanya satu kalimat: <em>"Jangan biarkan dia tahu kau datang."</em>
+        Malam ini kau tiba di sana. Gerbang berkarat itu terbuka sendiri.
+      </p>
+    </div>
+    <div class="menu-actions">
+      <button id="start-btn" class="btn primary" type="button">Mulai bermain</button>
+      <button id="menu-guide-btn" class="btn" type="button">Cara bermain</button>
+      <button id="menu-settings-btn" class="btn" type="button">Pengaturan</button>
+      <div class="hint">Keyboard dan mouse, atau layar sentuh di HP.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Cara bermain -->
+<div id="guide" class="overlay" hidden>
+  <div class="card" role="dialog" aria-labelledby="guide-title">
+    <h2 id="guide-title">Cara bermain</h2>
+    <p>Kumpulkan tiga catatan Ayu, temukan kunci, lalu hentikan Ratih di ruang ritual. Tujuan saat ini selalu tampil di kiri atas, dengan panah penunjuk arah.</p>
+    <div class="guide-grid">
+      <div class="guide-item">
+        <div>
+          <b>Bergerak</b>
+          <span>Berjalan dan menoleh. Tahan Shift untuk lari, Ctrl untuk jongkok. Lari menguras stamina.</span>
+          <div class="guide-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>Shift</kbd><kbd>Ctrl</kbd></div>
+        </div>
+      </div>
+      <div class="guide-item">
+        <div>
+          <b>Senter</b>
+          <span>Nyalakan atau matikan senter. Baterai berkurang. Ambil baterai untuk mengisinya lagi.</span>
+          <div class="guide-keys"><kbd>F</kbd></div>
+        </div>
+      </div>
+      <div class="guide-item">
+        <div>
+          <b>Mode UV</b>
+          <span>Cahaya UV membuat hantu mundur dan menampakkan segel di ruang ritual. Mode ini lebih cepat menguras baterai.</span>
+          <div class="guide-keys"><kbd>R</kbd></div>
+        </div>
+      </div>
+      <div class="guide-item">
+        <div>
+          <b>Interaksi</b>
+          <span>Ambil benda, buka pintu, atau periksa altar saat prompt muncul di tengah layar.</span>
+          <div class="guide-keys"><kbd>E</kbd></div>
+        </div>
+      </div>
+      <div class="guide-item">
+        <div>
+          <b>Bersembunyi</b>
+          <span>Masuk ke lemari untuk bersembunyi dari hantu. Hantu tidak bisa melihatmu di dalam sana.</span>
+          <div class="guide-keys"><kbd>E</kbd></div>
+        </div>
+      </div>
+      <div class="guide-item">
+        <div>
+          <b>Jeda</b>
+          <span>Tekan Esc untuk jeda, mengatur pengaturan, atau kembali ke menu.</span>
+          <div class="guide-keys"><kbd>Esc</kbd></div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:18px; display:flex; justify-content:flex-end">
+      <button id="guide-close" class="btn primary" type="button">Mengerti</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pengaturan -->
+<div id="settings" class="overlay" hidden>
+  <div class="card" role="dialog" aria-labelledby="settings-title">
+    <h2 id="settings-title">Pengaturan</h2>
+    <div class="setting">
+      <div class="setting-head">
+        <b><label for="sens">Sensitivitas kamera</label></b>
+        <span id="sens-val">100%</span>
+      </div>
+      <input id="sens" type="range" min="50" max="200" step="10" value="100">
+    </div>
+    <div class="setting">
+      <div class="setting-head">
+        <div><b>Tingkat kesulitan</b><br><span>Mudah membuat hantu lebih lambat dan kerusakan lebih kecil.</span></div>
+        <div class="seg" role="group" aria-label="Tingkat kesulitan">
+          <button type="button" data-diff="easy" aria-pressed="false">Mudah</button>
+          <button type="button" data-diff="normal" aria-pressed="true">Normal</button>
+        </div>
+      </div>
+    </div>
+    <div class="setting">
+      <div class="setting-head">
+        <div><b>Kurangi gerakan dan kilatan</b><br><span>Mematikan goyangan kamera dan lampu yang berkedip.</span></div>
+        <button id="reduce-toggle" class="toggle" type="button" aria-pressed="false">Mati</button>
+      </div>
+    </div>
+    <div class="setting">
+      <div class="setting-head">
+        <div><b>Efek kejutan</b><br><span>Kilatan dan suara mendadak saat hantu menyerang.</span></div>
+        <button id="scare-toggle" class="toggle" type="button" aria-pressed="true">Nyala</button>
+      </div>
+    </div>
+    <div style="margin-top:14px; display:flex; justify-content:flex-end">
+      <button id="settings-close" class="btn primary" type="button">Selesai</button>
+    </div>
+  </div>
+</div>
+
+<!-- Menu jeda -->
+<div id="pause" class="overlay" hidden>
+  <div class="card" role="dialog" aria-labelledby="pause-title">
+    <h2 id="pause-title">Jeda</h2>
+    <p>Napasmu tertahan. Rumah ini belum selesai denganmu.</p>
+    <div style="display:flex; flex-direction:column; gap:10px; margin-top:18px">
+      <button id="resume-btn" class="btn primary" type="button">Lanjutkan</button>
+      <button id="pause-guide-btn" class="btn" type="button">Cara bermain</button>
+      <button id="pause-settings-btn" class="btn" type="button">Pengaturan</button>
+      <button id="menu-btn" class="btn danger" type="button">Kembali ke menu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Game over -->
+<div id="gameover" class="overlay" hidden>
+  <div class="card" style="text-align:center">
+    <h2 style="color:var(--danger); font-size:clamp(28px,4.5vw,40px)">Kau tertangkap</h2>
+    <p id="gameover-text">Pandanganmu menggelap. Rumah itu menelanmu lagi.</p>
+    <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:20px">
+      <button id="retry-btn" class="btn primary" type="button">Coba lagi</button>
+      <button id="gameover-menu-btn" class="btn" type="button">Menu utama</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ending -->
+<div id="ending" class="overlay" hidden>
+  <div class="card">
+    <h2 id="ending-title">Fajar</h2>
+    <p id="ending-text"></p>
+    <div style="display:flex; gap:10px; justify-content:center; margin-top:20px">
+      <button id="ending-btn" class="btn primary" type="button">Main lagi</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/world.js"></script>
+<script src="js/story.js"></script>
+<script src="js/enemy.js"></script>
+<script src="js/touch.js"></script>
+<script src="js/game.js"></script>
